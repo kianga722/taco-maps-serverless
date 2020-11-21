@@ -1,0 +1,16 @@
+{
+  "name": "taco-maps-serverless",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "dependencies": {
+    "axios": "^0.21.0",
+    "dotenv": "^8.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "netlify dev"
+  },
+  "author": "",
+  "license": "ISC"
+}
