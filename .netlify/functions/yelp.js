@@ -97,15 +97,19 @@ exports.handler = async function(event, context) {
     try {
         const response = await axios(yelpOptions)
 
+        const businesses = {};
+
         // Add custom fields
         for (let business of response.data.data.search.business) {
-           const hoursArr = business.hours[0].open;
-           business.formatted_hours = formatOpenHours(hoursArr);
-           business.categoriesString = business.categories.map(cat => {
-               return cat.alias
-           }).toString();
-           business.formatted_address = business.location.formatted_address.split('\n')
-           business.image_url = business.photos[0];
+            businesses[business.id] = business;
+            const hoursArr = business.hours[0].open;
+            businesses[business.id].formatted_hours = formatOpenHours(hoursArr);
+            businesses[business.id].categoriesString = business.categories.map(cat => {
+                return cat.alias
+            }).toString();
+            businesses[business.id].formatted_address = business.location.formatted_address.split('\n')
+            businesses[business.id].image_url = business.photos[0];
+            business.show = true;
        }
    
        return {
@@ -113,7 +117,7 @@ exports.handler = async function(event, context) {
          headers: {
            "Content-Type": "application/json"
          },
-         body: JSON.stringify(response.data)
+         body: JSON.stringify(businesses)
        };
     } catch(err) {
         return {
