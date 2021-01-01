@@ -41,91 +41,112 @@ function formatOpenHours(hoursArr) {
 }
 
 exports.handler = async function(event, context) {
-    const { lat, lng } = JSON.parse(event.body);
+    if (event.httpMethod === 'OPTIONS') {
+        // To enable CORS
+        const headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE'
+        };
+        return {
+            statusCode: 200, // <-- Must be 200 otherwise pre-flight call fails
+            headers,
+            body: 'This was a preflight call!'
+        };
+    } else {
+        if (event.body) {
+            const { lat, lng } = JSON.parse(event.body);
 
-    const query = `
-    query {
-        search(term: "tacos",
-            latitude: ${lat},
-            longitude: ${lng},
-            limit: 50,
-            open_now: true) {
-            total
-            business {
-                id
-                coordinates {
-                    latitude
-                    longitude
-                }
-                name
-                rating
-                price
-                review_count
-                photos
-                categories {
-                    alias
-                }
-                location {
-                    formatted_address
-                }
-                phone
-                url
-                hours {
-                    hours_type
-                    is_open_now
-                    open {
-                        day
-                        start
-                        end
-                        is_overnight
+            const query = `
+            query {
+                search(term: "tacos",
+                    latitude: ${lat},
+                    longitude: ${lng},
+                    limit: 50,
+                    open_now: true) {
+                    total
+                    business {
+                        id
+                        coordinates {
+                            latitude
+                            longitude
+                        }
+                        name
+                        rating
+                        price
+                        review_count
+                        photos
+                        categories {
+                            alias
+                        }
+                        location {
+                            formatted_address
+                        }
+                        phone
+                        url
+                        hours {
+                            hours_type
+                            is_open_now
+                            open {
+                                day
+                                start
+                                end
+                                is_overnight
+                            }
+                        }
                     }
                 }
             }
+            `;
+        
+            const yelpOptions = {
+                url: 'https://api.yelp.com/v3/graphql',
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${yelpKey}`,
+                },
+                data: { query }
+            };
+        
+            try {
+                const response = await axios(yelpOptions)
+        
+                const businesses = {};
+        
+                // Add custom fields
+                for (let business of response.data.data.search.business) {
+                    businesses[business.id] = business;
+                    const hoursArr = business.hours[0].open;
+                    businesses[business.id].formatted_hours = formatOpenHours(hoursArr);
+                    businesses[business.id].categoriesString = business.categories.map(cat => {
+                        return cat.alias
+                    }).toString();
+                    businesses[business.id].formatted_address = business.location.formatted_address.split('\n')
+                    businesses[business.id].image_url = business.photos[0];
+                    business.show = true;
+               }
+           
+               return {
+                 statusCode: 200,
+                 headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    "Content-Type": "application/json",
+                 },
+                 body: JSON.stringify(businesses)
+               };
+            } catch(err) {
+                return {
+                    statusCode: 400,
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(err)
+                }
+            }
         }
-    }
-    `;
-
-    const yelpOptions = {
-        url: 'https://api.yelp.com/v3/graphql',
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${yelpKey}`,
-        },
-        data: { query }
-    };
-
-    try {
-        const response = await axios(yelpOptions)
-
-        const businesses = {};
-
-        // Add custom fields
-        for (let business of response.data.data.search.business) {
-            businesses[business.id] = business;
-            const hoursArr = business.hours[0].open;
-            businesses[business.id].formatted_hours = formatOpenHours(hoursArr);
-            businesses[business.id].categoriesString = business.categories.map(cat => {
-                return cat.alias
-            }).toString();
-            businesses[business.id].formatted_address = business.location.formatted_address.split('\n')
-            businesses[business.id].image_url = business.photos[0];
-            business.show = true;
-       }
-   
-       return {
-         statusCode: 200,
-         headers: {
-           "Content-Type": "application/json"
-         },
-         body: JSON.stringify(businesses)
-       };
-    } catch(err) {
         return {
-            statusCode: 400,
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(err)
-        }
+            statusCode: 500,
+            body: 'unrecognized HTTP Method'
+        };
     }
 }
