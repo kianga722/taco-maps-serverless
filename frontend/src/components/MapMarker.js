@@ -205,6 +205,7 @@ const MapMarker = ({
                             onClick={(event) => copyAddress(event, business.formatted_address)}
                         >
                             {
+                                business.formatted_address &&
                                 business.formatted_address.map((line, index) => (
                                     <div key={`${business.name} - ${index}`}>
                                         {line}

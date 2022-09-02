@@ -121,7 +121,9 @@ exports.handler = async function(event, context) {
                     businesses[business.id].categoriesString = business.categories.map(cat => {
                         return cat.alias
                     }).toString();
-                    businesses[business.id].formatted_address = business.location.formatted_address.split('\n')
+
+                    businesses[business.id].formatted_address = business.location.formatted_address ? business.location.formatted_address.split('\n') : null;
+                    
                     businesses[business.id].image_url = business.photos[0];
                     business.show = true;
                }
